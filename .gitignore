@@ -1,0 +1,20 @@
+temp/
+CLAUDE.md
+AGENTS.md
+.agents
+.claude
+skills-lock.json
+claude-**.bat
+claude-rules.md
+
+# Local environment (created by Setup.bat)
+.venv/
+runtime/
+
+# Downloads
+output/*
+!output/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
