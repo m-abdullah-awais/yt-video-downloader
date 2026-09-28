@@ -48,9 +48,9 @@ if errorlevel 1 (
 :install_packages
 rem ---- 2. Python packages (local to .venv) -----------------------------
 echo [2/4] Installing Python packages into .venv
-"%VENV_PY%" -m pip install --upgrade pip --disable-pip-version-check --quiet
+"%VENV_PY%" -m pip install --upgrade pip --disable-pip-version-check --retries 10 --timeout 60 --quiet
 if errorlevel 1 goto :fail_pip
-"%VENV_PY%" -m pip install --upgrade -r "%~dp0requirements.txt" --disable-pip-version-check --quiet
+"%VENV_PY%" -m pip install --upgrade -r "%~dp0requirements.txt" --disable-pip-version-check --retries 10 --timeout 60 --quiet
 if errorlevel 1 goto :fail_pip
 
 rem ---- 3. JavaScript runtime (needed by yt-dlp for YouTube) ------------
@@ -63,7 +63,7 @@ if defined HAS_JS (
     echo [3/4] JavaScript runtime found: %HAS_JS%
 ) else (
     echo [3/4] No JavaScript runtime found, installing Deno into .venv
-    "%VENV_PY%" -m pip install --upgrade deno --disable-pip-version-check --quiet
+    "%VENV_PY%" -m pip install --upgrade deno --disable-pip-version-check --retries 10 --timeout 60 --quiet
     if errorlevel 1 goto :fail_pip
 )
 
@@ -71,7 +71,7 @@ rem ---- 4. ffmpeg (needed to merge video + audio and to create MP3) -----
 where ffmpeg >nul 2>&1
 if errorlevel 1 (
     echo [4/4] ffmpeg not found, installing a local copy into .venv
-    "%VENV_PY%" -m pip install --upgrade imageio-ffmpeg --disable-pip-version-check --quiet
+    "%VENV_PY%" -m pip install --upgrade imageio-ffmpeg --disable-pip-version-check --retries 10 --timeout 60 --quiet
     if errorlevel 1 goto :fail_pip
 ) else (
     echo [4/4] ffmpeg found on this system
@@ -121,14 +121,17 @@ where tar.exe >nul 2>&1 || (
 )
 if exist "%RUNTIME_DIR%\python" rmdir /s /q "%RUNTIME_DIR%\python"
 if not exist "%RUNTIME_DIR%" mkdir "%RUNTIME_DIR%"
-curl.exe -L --fail --retry 3 --progress-bar -o "%RUNTIME_DIR%\python.tar.gz" "%PY_URL%"
+rem A leftover python.tar.gz is always a partial download, so resume it.
+curl.exe -L --fail --retry 10 --retry-all-errors --retry-delay 3 -C - --progress-bar -o "%RUNTIME_DIR%\python.tar.gz" "%PY_URL%"
 if errorlevel 1 (
-    echo ERROR: Download failed. Check your internet connection and try again.
+    echo ERROR: Download failed. Check your internet connection and run Setup.bat again, it will resume.
     exit /b 1
 )
 tar.exe -xzf "%RUNTIME_DIR%\python.tar.gz" -C "%RUNTIME_DIR%"
 if errorlevel 1 (
-    echo ERROR: Could not extract the Python archive.
+    echo ERROR: Could not extract the Python archive. Run Setup.bat again to download it fresh.
+    del /q "%RUNTIME_DIR%\python.tar.gz"
+    if exist "%RUNTIME_DIR%\python" rmdir /s /q "%RUNTIME_DIR%\python"
     exit /b 1
 )
 del /q "%RUNTIME_DIR%\python.tar.gz"
